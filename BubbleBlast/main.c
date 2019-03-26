@@ -203,7 +203,6 @@ int recursiveBestPathTree(FILE *stream, int *numMoves, int *minMoves, int x, int
 	movesStatusStack[*numMoves].x = x;
 	movesStatusStack[*numMoves].y = y;
 
-	//*numMoves = *numMoves + 1;	
 	*numMoves += 1;
 
 	updateBubbleState(gameField, x, y, noDirection);
@@ -237,7 +236,6 @@ int recursiveBestPathTree(FILE *stream, int *numMoves, int *minMoves, int x, int
 		}
 	}
 	
-	//*numMoves = *numMoves - 1;
 	*numMoves -= 1;
 	restoreCalcMovesStatus(gameField, movesStatusRef);
 }
