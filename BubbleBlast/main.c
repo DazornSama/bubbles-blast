@@ -1,68 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "BubbleBlast.h"
 #include <time.h>
 
-#define rows 5
-#define columns 6
-
-/*
-	Enumeratore contenente gli stati
-	che le bolle possono assumere
-*/
-enum states
+int generateRandBubbleState()
 {
-	exploded = 0,
-	empty,
-	half,
-	full,
-	statesCount
-};
-
-/*
-	Struttura che definisce le coordinate
-	applicate dall'algoritmo quando calcola
-	il percorso più efficiente
-*/
-struct status
-{
-	int x;
-	int y;
-};
-
-/*
-	Struttura che definisce le coordinate
-	sugli assi cartesiani relative alla
-	prossima propagazione della bolla
-*/
-struct deltas
-{
-	int dx;
-	int dy;
-};
-
-/*
-	Funzione che imposta lo stato iniziale (random)
-	e il carattere visuale della bolla ricevuta come
-	parametro in input
-*/
-int getState()
-{
-	return (enum states)(rand() % statesCount);
+	return (enum BubbleStates)(rand() % bubbleStatesCount);
 }
 
-/*
-	Funzione che ritorna il carattere visuale
-	in bae allo stato della bolla ricevuto
-	come parametro in input
-*/
-char getVisualForState(enum states state)
+char getVisualCharForBubbleState(enum BubbleStates bubbleState)
 {
-	switch (state)
+	switch (bubbleState)
 	{
-		case empty: return ' ';
-		case half: return 'O';
-		case full: return '0';
-		case exploded: return 'X';
+		case stateEmpty: return ' ';
+		case stateHalf: return 'O';
+		case stateFull: return '0';
+		case stateExploded: return 'X';
 	}
 }
 
@@ -72,275 +25,193 @@ void cleanInputBuffer()
 	while ((c = getchar()) != '\n' && c != EOF);
 }
 
-/*
-	Funzione che genera la matrice di gioco
-	principale e ne copia il contenuto nella
-	matrice usata dal programma
-*/
-int generateField(int playerField[rows][columns], int computerField[rows][columns])
+void avoidProgramExit()
 {
-	// Per ogni riga
-	for (int r = 0; r < rows; r++)
-	{
-		// Per ogni colonna
-		for (int c = 0; c < columns; c++)
-		{
-			// Popolo la bolla
-			playerField[r][c] = getState();
-			//playerField[r][&c] = getState();
-		}
-	}
-
-	// Copio prima matrice in una seconda matrice
-	memcpy(computerField, playerField, sizeof(int) * rows * columns);
+	system("pause");
+	exit(-1);
 }
 
-/*
-	Funzione che stampa a video la matrice
-	ricevuto come parametro in input
-*/
-void printPlayerField(int playerField[rows][columns])
+int generateGameField(int gameField[FIELD_ROWS][FIELD_COLUMNS])
 {
-	// Svuoto la console
+	for (int r = 0; r < FIELD_ROWS; r++)
+	{
+		for (int c = 0; c < FIELD_COLUMNS; c++)
+		{
+			gameField[r][c] = generateRandBubbleState();
+		}
+	}
+}
+
+void printGameFieldToPlayer(int gameField[FIELD_ROWS][FIELD_COLUMNS])
+{
 	system("cls");
 
-	// Per ogni riga
-	for (int r = 0; r < rows; r++)
+	for (int c = 0; c < FIELD_COLUMNS; c++)
 	{
-		// Per ogni colonna
-		for (int c = 0; c < columns; c++)
+		if (c == 0) printf("  ");
+		printf("%d ", c + 1);
+	}
+	printf("\n");
+
+	for (int r = 0; r < FIELD_ROWS; r++)
+	{
+		printf("%d ", r + 1);
+
+		for (int c = 0; c < FIELD_COLUMNS; c++)
 		{
-			// Stampo il carattere visuale della bolla
-			printf("%c ", getVisualForState(playerField[r][c]));
+			printf("%c ", getVisualCharForBubbleState(gameField[r][c]));
 		}
 		printf("\n");
 	}
 	printf("\n");
 }
 
-/*
-	Funzione che riceve in input dal giocatore
-	le coordinate di una bolla e valorizza di
-	conseguenza i puntatori ricevuti in input
-	come parametro
-*/
-void askPlayer(int *x, int *y, int playerField[rows][columns])
+void askPlayerNextMoveCoords(int *x, int *y, int gameField[FIELD_ROWS][FIELD_COLUMNS])
 {
+	int xTemp = *x;
+	int yTemp = *y;
+
 	do
 	{
-		*x = -1;
-		*y = -1;
-
-		// Finchè la colonna non è valida
-		while (*x == -1)
+		while (yTemp == -1)
 		{
-			printf("Seleziona una colonna [1-%d]", columns);
-			// Recupero valore colonna in input
-			scanf("%d", x);
+			printf("Seleziona una riga [1-%d]", FIELD_ROWS);
+			scanf("%d", &yTemp);
 			cleanInputBuffer();
 
-			// Se colonna non è presente nella matrice
-			// TRUE: Invalido l'input del giocatore
-			// FALSE: Correggo l'input dell'utente e modifico il valore del puntatore
-			if (*x < 1 || *x > columns)
+			if (yTemp < 1 || yTemp > FIELD_ROWS)
 			{
-				*x = -1;
-				printf("Non e' una colonna valida!\n");
-			}
-			else
-			{
-				*x -= 1;
-			}
-		}
-
-		// Finchè la riga non è valida
-		while (*y == -1)
-		{
-			printf("Seleziona una riga [1-%d]", rows);
-			// Recupero valore riga in input
-			scanf("%d", y);
-			cleanInputBuffer();
-
-			// Se riga non è presente nella matrice
-			// TRUE: Invalido l'input del giocatore
-			// FALSE: Correggo l'input dell'utente e modifico il valore del puntatore
-			if (*y < 1 || *y > rows)
-			{
-				*y = -1;
+				yTemp = -1;
 				printf("Non e' una riga valida!\n");
 			}
 			else
 			{
-				*y -= 1;
+				yTemp--;
 			}
 		}
 
-		if (playerField[*y][*x] == exploded)
+		while (xTemp == -1)
 		{
+			printf("Seleziona una colonna [1-%d]", FIELD_COLUMNS);
+			scanf("%d", &xTemp);
+			cleanInputBuffer();
+
+			if (xTemp < 1 || xTemp > FIELD_COLUMNS)
+			{
+				xTemp = -1;
+				printf("Non e' una colonna valida!\n");
+			}
+			else
+			{
+				xTemp--;
+			}
+		}
+
+		if (gameField[yTemp][xTemp] == stateExploded)
+		{
+			xTemp = -1;
+			yTemp = -1;
 			printf("Non puoi scegliere una bolla gia' esplosa!\n");
 		}
-	} while (playerField[*y][*x] == exploded);
+	} while (gameField[yTemp][xTemp] == stateExploded);
+
+	*x = xTemp;
+	*y = yTemp;
 }
 
-/*
-	Funzione che calcola il delta delle
-	coordinate cartesiane in relazione alla direzione
-	ricevuta come parametro in input
-	0: sinistra
-	1: su
-	2: destra
-	3: giù
-*/
-struct deltas getDeltas(int x, int y, int propagation)
+struct BubbleExplosionDeltas calcBubbleExplosionDeltas(int x, int y, int explosionPropagationDirection)
 {
-	struct deltas ris;
-	ris.dx = x + (propagation == 0 ? -1 : propagation == 2 ? 1 : 0);
-	ris.dy = y + (propagation == 1 ? -1 : propagation == 3 ? 1 : 0);
-	return ris;
+	struct BubbleExplosionDeltas deltas;
+	deltas.dx = x + (explosionPropagationDirection == directionLeft ? -1 : explosionPropagationDirection == directionRight ? 1 : 0);
+	deltas.dy = y + (explosionPropagationDirection == directionUp ? -1 : explosionPropagationDirection == directionDown ? 1 : 0);
+	return deltas;
 }
 
-/*
-	Funzione ricorsiva che aggiorna lo stato della
-	bolla e se necessario propaga l'evento alle
-	bolle adiacenti
-*/
-void updateNode(int matrix[rows][columns], int x, int y, int propagation)
+void updateBubbleState(int gameField[FIELD_ROWS][FIELD_COLUMNS], int x, int y, int explosionPropagationDirection)
 {
-	// Se le coordinate ricevute come parametro in input non sono comprese nella matrice
-	// VERO: ritorno senza compiere ulteriori azioni
-	if (x < 0 || y < 0 || x >= columns || y >= rows)
+	if (x < 0 || y < 0 || x >= FIELD_COLUMNS || y >= FIELD_ROWS)
 	{
 		return;
 	}
 
-	struct deltas delta;
+	struct BubbleExplosionDeltas deltas;
 
-	// Se la bolla è già esplosa
-	if (matrix[y][x] == exploded)
+	if (gameField[y][x] == stateExploded)
 	{
-		// Se il valore di propagazione(direzione esplosione) è valido
-		if (propagation != -1)
+		if (explosionPropagationDirection != -1)
 		{
-			// Recupero i delta delle coordinate ricevute in input come parametro aggiornate con la direzione
-			delta = getDeltas(x, y, propagation);
-			// Aggiorno la bolla risultante
-			updateNode(matrix, delta.dx, delta.dy, propagation);
+			deltas = calcBubbleExplosionDeltas(x, y, explosionPropagationDirection);
+			updateBubbleState(gameField, deltas.dx, deltas.dy, explosionPropagationDirection);
 		}
 	}
-	// Altrimenti se la bolla sta per esplodere 
-	else if (matrix[y][x] == full)
+	else if (gameField[y][x] == stateFull)
 	{
-		// Aggiorno lo stato ad esplosa
-		matrix[y][x] = exploded;
+		gameField[y][x] = stateExploded;
 
-		// Per ogni possibile direzione cartesiana
 		for (int i = 0; i < 4; i++)
 		{
-			// Recupero i delta delle coordinate ricevute in input come parametro aggiornate con la direzione corrente
-			delta = getDeltas(x, y, i);
-			// Aggiorno la bolla risultante
-			updateNode(matrix, delta.dx, delta.dy, i);
+			enum BubbleExplosionDirectionPropagation directionPropagation = (enum BubbleExplosionDirectionPropagation)i;
+			deltas = calcBubbleExplosionDeltas(x, y, directionPropagation);
+			updateBubbleState(gameField, deltas.dx, deltas.dy, directionPropagation);
 		}
 	}
 	else
 	{
-		// Altrimenti, incremento lo stato della bolla
-		matrix[y][x] += 1;
+		gameField[y][x] += 1;
 	}
-
-	// Aggiorno il valore visuale della bolla appena modificata
-	//matrix[y][x].visual = getVisualForState(matrix[y][x].state);
 }
 
-/*
-	Funzione che salva in memoria la matrice
-	ricevuta come parametro in input
-*/
-char* saveMatrix(int matrix[rows][columns])
+char* saveCalcMovesStatus(int movesField[FIELD_ROWS][FIELD_COLUMNS])
 {
-	int dim = sizeof(int) * rows * columns;
-	// Alloco in memoria e ottengo l'indirizzo relativo
+	int dim = sizeof(int) * FIELD_ROWS * FIELD_COLUMNS;
 	char* ris = malloc(dim);
-	// Copio il valore della matrice nell'indirizzo appena occupato
-	memcpy(ris, matrix, dim);
+	memcpy(ris, movesField, dim);
 	return ris;
 }
 
-/*
-	Funzione che recupera da un buffer in ingresso
-	il valore della matrice presente
-*/
-void restoreMatrix(int matrix[rows][columns], char* buf)
+void restoreCalcMovesStatus(int movesField[FIELD_ROWS][FIELD_COLUMNS], char* buffer)
 {
-	int dim = sizeof(int) * rows * columns;
-	// Copio il valore della matrice contenuta nell'indirizzo del buffer sulla matrice ricevuta come parametro in input
-	memcpy(matrix, buf, dim);
-	// Dealloco l'indirizzo che occupava il buffer
-	free(buf);
+	int dim = sizeof(int) * FIELD_ROWS * FIELD_COLUMNS;
+	memcpy(movesField, buffer, dim);
+	free(buffer);
 }
 
-/*
-	Funzione che controlla se il gioco è
-	stato completato
-*/
-int isCompleted(int matrix[rows][columns])
+int isGameCompleted(int gameField[FIELD_ROWS][FIELD_COLUMNS])
 {
-	//if (numMoves >= minMoves) gridCompleted = lost;
-	// Per ogni riga
-	for (int r = 0; r < rows; r++)
+	for (int r = 0; r < FIELD_ROWS; r++)
 	{
-		// Per ogni colonna
-		for (int c = 0; c < columns; c++)
+		for (int c = 0; c < FIELD_COLUMNS; c++)
 		{
-			// Se la bolla corrente ha stato diverso da esplosa
-			if (matrix[r][c] != exploded)
+			if (gameField[r][c] != stateExploded)
 			{
-				// Il gioco non è stato completato
-				return 0;
+				return statusPlaying;
 			}
 		}
 	}
 
-	// Il gioco è stato completato
-	//gridCompleted = win;
-	return 1;
+	return statusWon;
 }
 
-/*
-	Funzione ricorsiva che valuta tutte le possibili scelte
-	che si possono fare e ne deriva il miglior percorso
-	per vincere la partita
-*/
-int tree(FILE *stream, int *numMoves, int *minMoves, int x, int y, int computerField[rows][columns], struct status statusStack[1000])
+int recursiveBestPathTree(FILE *stream, int *numMoves, int *minMoves, int x, int y, int gameField[FIELD_ROWS][FIELD_COLUMNS], struct MovesStackStatus movesStatusStack[1000])
 {
-	// Se il numero di mosse è maggiore di quello minimo già trovato oppure la bolla corrente è già esplosa
-	if (*numMoves >= *minMoves - 1 || computerField[y][x] == exploded)
+	if (*numMoves >= *minMoves - 1 || gameField[y][x] == stateExploded)
 	{
-		// Ritorno, evitando azioni inutili
 		return;
 	}
 
-	// Salvo lo stato corrente della matrice in memoria
-	char* stack = saveMatrix(computerField);
+	char* movesStatusRef = saveCalcMovesStatus(gameField);
+	movesStatusStack[*numMoves].x = x;
+	movesStatusStack[*numMoves].y = y;
 
-	// Aggiorno lo stack delle mosse (rispetto alla mossa corrente) con le coordinate della bolla corrente
-	statusStack[*numMoves].x = x;
-	statusStack[*numMoves].y = y;
+	//*numMoves = *numMoves + 1;	
+	*numMoves += 1;
 
-	// Incremento il numero di mosse compiute
-	*numMoves = *numMoves + 1;
+	updateBubbleState(gameField, x, y, noDirection);
 
-	// Aggiorno lo stato della bolla corrente
-	updateNode(computerField, x, y, -1);
-
-	// Se la griglia presenta solo bolle esplose (gioco completato)
-	//if(gridCompleted == win)
-	if(isCompleted(computerField))
+	if(isGameCompleted(gameField))
 	{ 
-		// Se il numero di mosse minimo già trovato è maggiore del numero di mosse compiute
 		if (*minMoves > *numMoves)
 		{
-			// Aggiorno il valore minimo con il numero corrente di mosse
 			*minMoves = *numMoves;
 		}
 
@@ -348,158 +219,115 @@ int tree(FILE *stream, int *numMoves, int *minMoves, int x, int y, int computerF
 
 		for (int i = 0; i < *numMoves; i++)
 		{
-			fprintf(stream, "%d: (%d, %d)\n", i+1, statusStack[i].x+1, statusStack[i].y+1);
+			fprintf(stream, "%d: [%d][%d]\n", i + 1, movesStatusStack[i].y + 1, movesStatusStack[i].x + 1);
 		}
 		fprintf(stream, "\n");
 
-		// Decremento il numero di mosse
 		numMoves--;
-		// Ripristino la matrice allo stato precedente che avevo salvato in memoria
-		restoreMatrix(computerField, stack);
+		restoreCalcMovesStatus(gameField, movesStatusRef);
 
 		return;
 	}
 
-	// Per ogni riga
-	for (int r = 0; r < rows; r++)
+	for (int r = 0; r < FIELD_ROWS; r++)
 	{	
-		// Per ogni colonna
-		for (int c = 0; c < columns; c++)
+		for (int c = 0; c < FIELD_COLUMNS; c++)
 		{
-			// Calcolo il percorso migliore
-			tree(stream, numMoves, minMoves, c, r, computerField, statusStack);
+			recursiveBestPathTree(stream, numMoves, minMoves, c, r, gameField, movesStatusStack);
 		}
 	}
 	
-	// Decremento il numero di mosse
-	*numMoves = *numMoves - 1;
-	// Ripristino la matrice allo stato precedente che avevo salvato in memoria
-	restoreMatrix(computerField, stack);
+	//*numMoves = *numMoves - 1;
+	*numMoves -= 1;
+	restoreCalcMovesStatus(gameField, movesStatusRef);
 }
 
-/*
-	Funzione che si occupa del calcolo delle mosse
-	minime necessarie a completare la griglia
-	generata all'inzio della partita
-*/
-int calcMinMoves(int computerField[rows][columns])
+int calcMinMovesForGameField(int gameField[FIELD_ROWS][FIELD_COLUMNS])
 {
 	int minMoves = INT_MAX;
-	// Apro stream file
-	FILE *stream = fopen("moves.txt", "w");
+	FILE *logStream = fopen("moves.txt", "w");
 
-	// Se lo stream non può essere aperto
-	if (stream == NULL)
+	int* placeholderFieldRef = malloc(sizeof(int) * FIELD_ROWS * FIELD_COLUMNS);
+	memcpy(placeholderFieldRef, gameField, sizeof(int) * FIELD_ROWS * FIELD_COLUMNS);
+
+	if (logStream == NULL)
 	{
 		printf("Impossibile aprire il file %s\n", "moves.txt");
-		// Attendo un input dell'utente
-		system("pause");
-		// Termino il programma con un codice di errore
-		exit(1);
+		avoidProgramExit();
 	}
 
-	fprintf(stream, "Algoritmo per il calcolo del numero minimo di mosse necessario a completare la seguente griglia:\n\n");
+	fprintf(logStream, "Algoritmo per il calcolo del numero minimo di mosse necessario a completare la seguente griglia:\n\n");
 
-	for (int c = 0; c < columns; c++)
+	for (int c = 0; c < FIELD_COLUMNS; c++)
 	{
-		if (c == 0) fprintf(stream, "   ");
-		fprintf(stream, "%d ", c + 1);
+		if (c == 0) fprintf(logStream, "   ");
+		fprintf(logStream, "%d ", c + 1);
 	}
-	fprintf(stream, "\n");
+	fprintf(logStream, "\n");
 
-	for (int r = 0; r < rows; r++)
+	for (int r = 0; r < FIELD_ROWS; r++)
 	{
-		fprintf(stream, "%d  ", r + 1);
+		fprintf(logStream, "%d  ", r + 1);
 
-		for (int c = 0; c < columns; c++)
+		for (int c = 0; c < FIELD_COLUMNS; c++)
 		{
 			
-			fprintf(stream, "%c ", getVisualForState((enum states)computerField[r][c]));
+			fprintf(logStream, "%c ", getVisualCharForBubbleState((enum BubbleStates)*(placeholderFieldRef + (r * FIELD_ROWS) + c)));
 		}
-		fprintf(stream, "\n");
+		fprintf(logStream, "\n");
 	}
-	fprintf(stream, "\n");
+	fprintf(logStream, "\n");
 
-	struct status statusStack[1000];
-	// Per ogni riga
-	for (int r = 0; r < rows; r++)
+	struct MovesStackStatus movesStatusStack[1000];
+	for (int r = 0; r < FIELD_ROWS; r++)
 	{
-		// Per ogni colonna
-		for (int c = 0; c < columns; c++)
+		for (int c = 0; c < FIELD_COLUMNS; c++)
 		{
-			fprintf(stream, "-------------------------------\n\nCalcolo rami possibili partendo da (%d, %d)\n\n", c + 1, r + 1);
+			fprintf(logStream, "-------------------------------\n\nCalcolo rami possibili partendo da [%d][%d]\n\n", r + 1, c + 1);
 			int numMoves = 0;
-			// Calcolo il ramo migliore relativo alla bolla di partenza corrente
-			tree(stream, &numMoves, &minMoves, c, r, computerField, &statusStack);
+			recursiveBestPathTree(logStream, &numMoves, &minMoves, c, r, placeholderFieldRef, &movesStatusStack);
 		}
 	}
 
-	fprintf(stream, "===============================\n\nIl ramo più efficiente impiega solamente %d mosse per completare la griglia.", minMoves);
+	fprintf(logStream, "===============================\n\nIl ramo più efficiente impiega solamente %d mosse per completare la griglia.", minMoves);
 
-	fflush(stream);
-	fclose(stream);
+	fflush(logStream);
+	fclose(logStream);
+	free(placeholderFieldRef);
 
 	return minMoves;
 }
 
-/*
-	Funzione principale del programma
-*/
 int main()
 {
-	// Inizializzo funzione rand() con il seed
  	srand(time(0));
-	// Dichiaro variabili utili al gioco
-	int numMoves = 0,	// Numero corrente di mosse del giocatore
-		status = 0,		// Boolean per verificare se il giocatore ha vinto o perso
-		ended = 0;		// Boolean per verificare quando il gioco è concluso
-	
-	int playerField[rows][columns];		// Matrice contenente le bolle del campo di gioco per il giocatore
-	int computerField[rows][columns];	// Matrice contenente le bolle del campo di gioco usato per calcolare il numero minimo di mosse
+	int numMoves = 0,
+		status = 0;
+	int gameField[FIELD_ROWS][FIELD_COLUMNS];
 
-	// Genero la matrice del giocatore e ne copio il valore all'iterno della matrice usata dall'algoritmo
-	generateField(playerField, computerField);
-	// Calcolo le mosse minime
-	int minMoves = calcMinMoves(computerField);
-	
-	// Finchè il gioco non è completato
-	while (ended == 0)
+	generateGameField(gameField);
+	int minMoves = calcMinMovesForGameField(gameField);
+
+	while (status == 0)
 	{
-		// Stampo la matrice allo stato corrente
-		printPlayerField(&playerField);
+		printGameFieldToPlayer(gameField);
 
 		printf("Mosse rimanenti: %d\n\n", minMoves - numMoves);
 
 		int x = -1, y = -1;
-		// Recupero da input del giocatore le coordinate cartesiane
-		askPlayer(&x, &y, &playerField);
+		askPlayerNextMoveCoords(&x, &y, gameField);
 
-		// Aggiorno la bolla relativa alle coordinate memorizzate precedentemente
-		updateNode(playerField, x, y, -1);
-
-		// Aumento il numero di mosse
+		updateBubbleState(gameField, x, y, noDirection);
 		numMoves++;
 
-		// Controllo se la griglia è stata completata
-		if (isCompleted(playerField))
+		status = isGameCompleted(gameField);
+		if (status == 0 && numMoves >= minMoves)
 		{
-			ended = 1;
-			status = 1;
-		}
-		else if (numMoves >= minMoves)
-		{
-			ended = 1;
+			status = statusLost;
 		}
 	}
 
-	// Stampo la matrice allo stato finale
-	printPlayerField(playerField);
-
-	// Se l'esito è valido stampo la vincita
-	// Altrimenti la sconfitta
-	printf("\n%s\n", (status ? "HAI VINTO" : "HAI PERSO"));
-	// Attendo un input dell'utente
-	system("pause");
-	// Termino il programma
-	exit(0);
+	printGameFieldToPlayer(gameField);
+	printf("\n%s\n", (status == 1 ? "HAI VINTO" : "HAI PERSO"));
+	avoidProgramExit();
 }
